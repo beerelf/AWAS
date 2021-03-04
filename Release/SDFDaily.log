@@ -1,0 +1,81 @@
+﻿Build started 10/30/2013 3:44:10 PM.
+     1>Project "C:\Projects\SDFdaily\SDFDaily.vcxproj" on node 2 (build target(s)).
+     1>InitializeBuildStatus:
+         Creating "Release\SDFDaily.unsuccessfulbuild" because "AlwaysCreate" was specified.
+       ClCompile:
+         All outputs are up-to-date.
+         c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /I..\common /IC:\Projects\SDFDailyViewer /Zi /nologo /W3 /WX- /O2 /Oy- /D WIN32 /D NDEBUG /D _CONSOLE /D _VC80_UPGRADE=0x0710 /D _MBCS /D _AFXDLL /Gm- /EHsc /MD /GS /fp:precise /Zc:wchar_t /Zc:forScope /Yu"StdAfx.h" /Fp"Release\SDFDaily.pch" /Fo"Release\\" /Fd"Release\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt SDFdata.cpp
+         SDFdata.cpp
+     1>SDFdata.cpp(207): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(219): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(278): warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
+     1>SDFdata.cpp(288): warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
+     1>SDFdata.cpp(298): warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
+     1>SDFdata.cpp(340): warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
+     1>SDFdata.cpp(786): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(925): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(1162): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(994): warning C4101: 'histEndYear' : unreferenced local variable
+     1>SDFdata.cpp(1412): warning C4996: 'sscanf': This function or variable may be unsafe. Consider using sscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\stdio.h(325) : see declaration of 'sscanf'
+     1>SDFdata.cpp(1445): warning C4996: 'sscanf': This function or variable may be unsafe. Consider using sscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\stdio.h(325) : see declaration of 'sscanf'
+     1>SDFdata.cpp(1506): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(1524): warning C4996: 'sscanf': This function or variable may be unsafe. Consider using sscanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\stdio.h(325) : see declaration of 'sscanf'
+     1>SDFdata.cpp(1600): warning C4101: 'ex' : unreferenced local variable
+     1>SDFdata.cpp(2021): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(2092): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(2116): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(2119): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(2126): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(2147): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(2160): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(2173): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(2191): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(2312): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(2319): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(2326): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(2849): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SDFdata.cpp(2850): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>SDFdata.cpp(2852): warning C4244: '+=' : conversion from 'double' to 'float', possible loss of data
+     1>SDFdata.cpp(2853): warning C4244: '+=' : conversion from 'double' to 'float', possible loss of data
+     1>SDFdata.cpp(2936): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(3134): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(3205): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(3387): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(3427): warning C4244: '+=' : conversion from 'double' to 'int', possible loss of data
+     1>SDFdata.cpp(3733): warning C4018: '<' : signed/unsigned mismatch
+     1>SDFdata.cpp(3827): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>SDFdata.cpp(3840): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>SDFdata.cpp(3855): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>SDFdata.cpp(3861): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>SDFdata.cpp(3958): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>SDFdata.cpp(4013): warning C4244: 'initializing' : conversion from 'std::streamsize' to 'int', possible loss of data
+     1>SDFdata.cpp(4179): warning C4482: nonstandard extension used: enum 'SiteData::SiteTypeEnum' used in qualified name
+       ResourceCompile:
+         All outputs are up-to-date.
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\Microsoft.CppBuild.targets(990,5): warning MSB8012: TargetPath(C:\Projects\SDFdaily\Release\SDFDaily.exe) does not match the Linker's OutputFile property value (C:\Projects\SDFdaily\Release\run_idsawas.exe). This may cause your project to build incorrectly. To correct this, please make sure that $(OutDir), $(TargetName) and $(TargetExt) property values match the value specified in %(Link.OutputFile).
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\Microsoft.CppBuild.targets(992,5): warning MSB8012: TargetName(SDFDaily) does not match the Linker's OutputFile property value (run_idsawas). This may cause your project to build incorrectly. To correct this, please make sure that $(OutDir), $(TargetName) and $(TargetExt) property values match the value specified in %(Link.OutputFile).
+       Link:
+         c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"Release\run_idsawas.exe" /INCREMENTAL:NO /NOLOGO /MANIFEST /ManifestFile:"Release\SDFDaily.exe.intermediate.manifest" /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /DEBUG /PDB:"C:\Projects\SDFdaily\Release\SDFDaily.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /TLBID:1 /DYNAMICBASE:NO /IMPLIB:"Release\SDFDaily.lib" /MACHINE:X86 Release\SDFDaily.res
+         Release\CustOutputManager.obj
+         Release\DataClass.obj
+         Release\idstime.obj
+         Release\SDFDaily.obj
+         Release\SDFdata.obj
+         Release\stdafx.obj
+         Release\stl_utils.obj
+         Release\TextImportDlg.obj
+         Release\utils.obj
+         SDFDaily.vcxproj -> C:\Projects\SDFdaily\Release\SDFDaily.exe
+       Manifest:
+         C:\Program Files (x86)\Microsoft SDKs\Windows\v7.0A\bin\mt.exe /nologo /verbose /outputresource:"Release\run_idsawas.exe;#1" /manifest Release\SDFDaily.exe.intermediate.manifest "c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\Include\Manifest\dpiaware.manifest"
+       FinalizeBuildStatus:
+         Deleting file "Release\SDFDaily.unsuccessfulbuild".
+         Touching "Release\SDFDaily.lastbuildstate".
+     1>Done Building Project "C:\Projects\SDFdaily\SDFDaily.vcxproj" (build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:08.65

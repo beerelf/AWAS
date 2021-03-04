@@ -1,0 +1,793 @@
+10 '****************************************************************************
+20 '*********** ANALYTICAL STREAM DEPLETION MODEL        DRS, 5/24/84 **********
+30 '****************************************************************************
+40 ' ************************** SPECIFICATIONS *********************************
+50 WIDTH "LPT1:", 150
+60 LPRINT CHR$(27); "@"
+70 CLS
+80 PRINT "                       ANALYTICAL STREAM DEPLETION MODEL"
+90 PRINT "                         OFFICE OF THE STATE ENGINEER"
+100 PRINT "                     COLORADO DIVISION OF WATER RESOURCES"
+110 PRINT "                             Dewayne R. Schroeder"
+120 PRINT "                                 May 24, 1984"
+REM additional modifications to output to create output
+REM file by Jeff Foster, HRS, 7-89
+PRINT : PRINT
+PRINT "This version modified by jsf to produce output file"
+PRINT "which contains q/Q and v/V values for infinite and "
+PRINT "alluvial aquifer conditions (options 1 and 2)."
+PRINT "NOTE that q/Q values are only meaningful for specific "
+PRINT "pumping schedules; constant pumping or constant pumping"
+PRINT "followed by shutoff.  For variable pumping schedules,"
+PRINT "q/Q is poorly defined."
+FOR x = 1 TO 2
+PRINT
+NEXT x
+140 INPUT " Do you want double precision? (Y/N)                                             if computation involves a large number of image wells use double precision      ", NUT$
+150 IF NUT$ = "n" OR NUT$ = "N" THEN J = 1000: GOTO 170 ELSE J = 790
+160 DEFDBL A-A, C-H, K-M, O-W, Y-Z
+170 PI = 3.141592653589793#: E = 2.718281828459045#
+180 I = 200
+190 DIM L$(18), LL$(18), TU$(4), DELT(I), q(I), ZZAT(I), QQ(J), VV(J), qd(J), vd(J), VPTP(I), AVP(I), LTP(365), QTP(365), H(202)
+200 '********************** INPUT DATA FOR HEADING *****************************
+210 CLS
+220 LINE INPUT "ENTER 1st HEADER (not to exceed 70 characters)                                            "; head1$
+230 IF LEN(head1$) > 70 THEN PRINT "HEADING TO LONG":  GOTO 220
+240 LINE INPUT "ENTER 2nd HEADER (not to exceed 70 characters)                                            "; HEAD2$
+250 IF LEN(HEAD2$) > 70 THEN PRINT "HEADING TO LONG":  GOTO 240
+260 XMO = VAL(MID$(DATE$, 1, 2))
+270 FOR x = 1 TO XMO
+280 READ XMON$
+290 NEXT x
+300 DTE$ = XMON$ + " " + MID$(DATE$, 4, 2) + ", " + MID$(DATE$, 7)
+310 DATA "JAN.","FEB.","MARCH","APRIL","MAY","JUNE","JULY","AUG.","SEPT.","OCT.","NOV.","DEC."
+320 '********************** SELECT BOUNDARIES **********************************
+330 CLS
+340 PRINT "SELECT BOUNDARY CONDITIONS (ENTER ITEM NUMBER)"
+350 PRINT "    1) INFINITE AQUIFER"
+360 PRINT "    2) ALLUVIAL AQUIFER"
+370 PRINT "    3) NO FLOW BOUNDARY PERPENDICULAR TO STREAM"
+380 PRINT "    4) USE EFFECTIVE STREAM DEPLETION FACTOR TO APPROXIMATE EFFECT OF BOUNDARIES"
+390 INPUT BI
+400 IF BI = 4 THEN ZZSEG$ = "N":  GOTO 440
+410 IF BI > 4 THEN GOTO 330
+420 INPUT "DO YOU WANT TO COMPUTE DEPLETION FOR A SEGMENT OF STREAM (Y OR N)"; ZZSEG$
+430 IF ZZSEG$ = "N" OR ZZSEG$ = "n" THEN ZZSEG$ = "N" ELSE ZZSEG$ = "Y"
+440 '********************* DRAW DIAGRAM ON SCREEN ******************************
+450 FOR x = 1 TO 18
+460 L$(x) = " "
+470 LL$(x) = " "
+480 PRINT
+490 NEXT x
+500 IF ZZSEG$ = "N" THEN GOTO 540
+510 L$(1) = "      <--(-Z) : (+Z)-->"
+520 L$(2) = "    <---Z1--->:<---Z2--->"
+530 L$(3) = "    <------SEGMENT------>"
+540 L$(4) = "============================="
+550 L$(5) = "  STREAM"
+560 L$(12) = "              O WELL"
+570 IF BI = 4 THEN GOTO 890
+580 IF BI = 2 THEN GOTO 760
+590 FOR x = 6 TO 11
+600 L$(x) = "              :"
+610 NEXT x
+620 L$(5) = "  STREAM      :"
+630 L$(8) = "              X"
+640 IF BI = 1 THEN GOTO 890
+650 L$(10) = "              :<-----B------>"
+660 FOR x = 1 TO 14
+670 LL$(x) = "://///"
+680 NEXT x
+690 LL$(3) = "://N//"
+700 LL$(4) = "://O//"
+710 LL$(6) = "://F//"
+720 LL$(7) = "://L//"
+730 LL$(8) = "://O//"
+740 LL$(9) = "://W//"
+750 GOTO 890
+760 FOR x = 6 TO 11
+770 L$(x) = "              :       :"
+780 NEXT x
+790 L$(5) = "  STREAM      :       :"
+800 L$(8) = "              X       W"
+810 L$(13) = "                      :"
+820 L$(14) = "                      :"
+830 FOR x = 16 TO 18
+840 L$(x) = "/////////////////////////////"
+850 NEXT x
+860 L$(15) = "-----------------------------"
+870 L$(17) = "///////////NO FLOW///////////"
+880 L$(12) = "              O WELL  :"
+890 FOR x = 1 TO 18
+900 PRINT L$(x); TAB(30); LL$(x)
+910 NEXT x
+920 PRINT
+930 PRINT
+940 '********************* INPUT AQUIFER AND BOUNDARY PARAMETERS **************
+950 IF BI = 4 THEN INPUT "ENTER STREAM DEPLETION FACTOR (days) "; SDF:  GOTO 1070
+960 IF BI = 2 THEN INPUT "W(FEET)"; W
+970 IF BI = 3 THEN INPUT "B(FEET)"; B
+980 INPUT "TRANSMISSIVITY (GPD/FT)"; TR
+990 INPUT "SPECIFIC YIELD"; S
+1000 INPUT "X(FEET)"; DXX
+1010 IF BI = 2 AND (W - DXX) < 0 THEN PRINT "X CANNOT EXCEED W":  GOTO 960
+1020 IF ZZSEG$ = "N" THEN GOTO 1070
+1030 INPUT "ENTER LEFT LIMIT (Z1, SEE DIAGRAM) OF STREAM SEGMENT. ENTER -99999 FOR NEGATIVE INFINITY (FEET)"; Z1
+1040 INPUT "ENTER RIGHT LIMIT (Z2, SEE DIAGRAM) OF STREAM SEGMENT. ENTER 99999 FOR INFINITY (FEET)"; Z2
+1050 IF BI = 3 AND B < Z2 THEN PRINT "Z2 CANNOT EXCEED B ":  GOTO 1040
+1060 IF (Z2 - Z1) < 0 THEN PRINT "Z1 CANNOT EXCEED Z2":  GOTO 1030
+1070 '************** DRAW DIAGRAM ON SCREEN WITH DIMENSIONS ********************
+1080 REM DRAW DIAGRAM ON SCREEN WITH DIMENSIONS
+1090 FOR x = 1 TO 10
+1100 PRINT
+1110 NEXT x
+1120 IF ZZSEG$ = "N" THEN GOTO 1300
+1130 PRINT "Z1="; Z1; "FEET,  Z2="; Z2; "FEET"
+1140 IF Z1 < 0 THEN GOTO 1170
+1150 PRINT TAB(15); ":<--Z1-->"; TAB(30); LL$(1)
+1160 GOTO 1180
+1170 PRINT "<------Z1---->:"; TAB(30); LL$(1)
+1180 IF Z2 < 0 THEN GOTO 1240
+1190 IF Z2 = B THEN GOTO 1220
+1200 PRINT TAB(15); ":<----Z2---->"; TAB(30); LL$(2)
+1210 GOTO 1250
+1220 PRINT TAB(15); ":<-----Z2----->"; LL$(2)
+1230 GOTO 1250
+1240 PRINT "        <-Z2->:"; TAB(30); LL$(2)
+1250 PRINT TAB(30); LL$(3)
+1260 FOR x = 4 TO 7
+1270 PRINT L$(x); TAB(30); LL$(x)
+1280 NEXT x
+1290 GOTO 1330
+1300 FOR x = 1 TO 7
+1310 PRINT L$(x); TAB(30); LL$(x)
+1320 NEXT x
+1330 IF BI = 4 THEN GOTO 1470
+1340 IF BI = 2 THEN GOTO 1370
+1350 PRINT TAB(11); DXX; "'"; TAB(30); LL$(8)
+1360 GOTO 1380
+1370 PRINT TAB(11); DXX; "'"; TAB(21); W; "'"; TAB(30); LL$(8)
+1380 PRINT L$(9); TAB(30); LL$(9)
+1390 IF BI = 3 THEN GOTO 1420
+1400 PRINT L$(10); TAB(30); LL$(10)
+1410 GOTO 1430
+1420 PRINT TAB(15); ":<-"; B; "'"; TAB(28); "->"; LL$(10)
+1430 FOR x = 11 TO 18
+1440 PRINT L$(x); TAB(30); LL$(x)
+1450 NEXT x
+1460 GOTO 1520
+1470 FOR x = 8 TO 12
+1480 PRINT L$(x)
+1490 NEXT x
+1500 PRINT "SDF="; SDF; "DAYS"
+1510 GOTO 1530
+1520 PRINT "T="; TR; "GPD/FT,  S="; S
+1530 PRINT "NOT DRAWN TO SCALE"
+1540 '*********************** CHANGE PARAMETERS ? ******************************
+1550 REM TO CHANGE PARAMETER PREVIOUSLY ENTERED
+1560 INPUT "DO YOU WISH TO MAKE ANY CHANGES (Y OR N )"; NUT$
+1570 IF NUT$ = "N" OR NUT$ = "n" THEN GOTO 1830
+1580 PRINT "ENTER ITEM NUMBER TO BE CHANGED"
+1590 PRINT "  1) BOUNDRIES"
+1600 PRINT "  2) TRANSMISSIVITY"
+1610 PRINT "  3) SPECIFIC YIELD"
+1620 PRINT "  4) X-DISTANCE FROM STREAM"
+1630 PRINT "  5) W-DISTANCE BETWEEN STREAM AND EDGE OF ALLUVIUM"
+1640 PRINT "  6) B-DISTANCE BETWEEN WELL AND NO FLOW BOUNDARY"
+1650 PRINT "  7) Z1-LEFT COORDINATE OF STREAM SEGMENT"
+1660 PRINT "  8) Z2-RIGHT COORDINATE OF STREAM SEGMENT"
+1670 INPUT CHA
+1680 ON CHA GOTO 340, 1690, 1710, 1730, 1750, 1770, 1790, 1810
+1690 INPUT "T(GPD/FT)"; TR
+1700 GOTO 1070
+1710 INPUT "SPECIFIC YIELD"; S
+1720 GOTO 1070
+1730 INPUT "DISTANCE FROM STREAM (FEET)"; DXX
+1740 GOTO 1070
+1750 INPUT "DISTANCE BETWEEN STREAM AND EDGE OF ALLUVIUM (FEET)"; W
+1760 GOTO 1070
+1770 INPUT "DISTANCE BETWEEN WELL AND NO FLOW BOUNDARY (FEET)"; B
+1780 GOTO 1070
+1790 INPUT "LEFT COORDINATE OF STREAM SEGMENT (FEET)"; Z1
+1800 GOTO 1070
+1810 INPUT "RIGHT COORDINATE OF STREAM SEGMENT (FEET)"; Z2
+1820 GOTO 1070
+1830 REM ***********************************************************************
+1840 REM INPUT PUMPING DATA
+1850 CLS
+1860 PRINT "A PUMPING PERIOD IS A PERIOD OF TIME DURING WHICH THE PUMPING RATE IS CONSTANT"
+1870 TT = 0
+1880 PRINT
+1890 INPUT "DO YOU WISH TO ENTER A CYCLIC (SEASONAL) PUMPING SCHEDULE (Y OR N)"; CSI$
+1900 IF CSI$ = "N" OR CSI$ = "n" THEN GOTO 1950
+1910 INPUT "NUMBER OF CYCLES OR SEASONS TO BE SIMULATED"; NC
+1920 INPUT "NUMBER OF PUMPING PERIODS PER CYCLE"; NPPC
+1930 np = NC * NPPC
+1940 GOTO 1970
+1950 PRINT "ENTER NUMBER OF PUMPING PERIODS"
+1960 INPUT np
+1970 PRINT "ENTER NUMBER FOR TIME UNITS TO BE USED"
+1980 PRINT "   (1)DAYS"
+1990 PRINT "   (2)WEEKS - A WEEK WILL = 365/52 DAYS"
+2000 PRINT "   (3)MONTHS - A MONTH WILL = 365/12 DAYS"
+2010 PRINT "   (4)YEARS - A YEAR WILL = 365 DAYS"
+2020 INPUT TUI
+2030 RESTORE 2050
+2050 FOR x = 1 TO TUI
+READ TU$(x), fact
+NEXT x
+DATA "DAYS",1,"WEEKS",7.019231,"MONTHS",30.41667,"YEARS",365
+2060 IF CSI$ = "Y" OR CSI$ = "y" THEN GOSUB 6940:  GOTO 2160
+2070 FOR x = 1 TO np
+2080 PRINT "FOR PUMPING PERIOD #"; x; "ENTER LENGTH OF PUMPING PERIOD IN "; TU$(TUI); "  (LENGTH MUST BE WHOLE NUMBER OF TIME UNITS)"
+2090 INPUT DELT(x)
+2100 IF (DELT(x) - INT(DELT(x))) <> 0 THEN GOTO 2080
+2110 TT = TT + DELT(x)
+2120 ZZAT(x) = TT
+2130 PRINT "ENTER PUMPING RATE (GPM) FOR PUMPING PERIOD #"; x
+2140 INPUT q(x)
+2150 NEXT x
+2160 '******************* PRINT PUMPING SCHEDULE ON SCREEN *********************
+2170 CLS
+2180 LCOUNT = 5
+2190 PRINT TAB(15); "PUMPING SCHEDULE"
+2200 PRINT "TOTAL TIME SIMULATED = "; TT; TU$(TUI)
+2210 PRINT
+2220 PRINT "PUMPING", "Q", "LENGTH", "ACC. TIME"
+2230 PRINT "PERIOD", "GPM", TU$(TUI), TU$(TUI)
+2240 FOR x = 1 TO np
+2250 PRINT x, q(x), DELT(x), ZZAT(x)
+2260 LCOUNT = LCOUNT + 1
+2270 IF LCOUNT = 20 THEN INPUT "    press return to continue"; NUT$: LCOUNT = 0
+2280 NEXT x
+2290 '******************* CHANGE PUMPING SCHEDULE ? ****************************
+2300 INPUT "DO YOU WANT TO CHANGE PUMPING SCHEDULE (Y OR N)"; NUT$
+2310 IF NUT$ = "Y" OR NUT$ = "y" THEN GOTO 1840
+2320 REM *****************************************************************************************
+2330 '****************** SELECT TIME BETWEEN PRINTOUTS *************************
+2340 CLS
+2350 PRINT "A LARGER NUMER OF TIME STEPS CAN BE SELECTED BY ANSWERING THE NEXT QUESTION     WITH A YES(Y)."
+2360 INPUT "DO YOU WANT DEPLETION PRINTED OR GRAPHED FOR TIMES OTHER THAN END OF EACH       PUMPING PERIOD (Y OR N)      "; PFOT$
+2370 IF PFOT$ = "N" OR PFOT$ = "n" THEN GOTO 2420 ELSE PFOT$ = "Y"
+2380 PRINT "ENTER NUMBER OF  "; TU$(TUI); " BETWEEN PRINTOUTS."
+2390 INPUT TBP
+2400 IF (TBP - INT(TBP)) > .0001 THEN PRINT "YOU MUST SELECT A WHOLE NUMBER OF "; TU$(TUI):  GOTO 2380
+2410 '********************* SELECT GRAPH OPTION ********************************
+2420 INPUT "DO YOU WANT DEPLETION GRAPHED (Y OR N)"; GI$
+2430 IF GI$ = "Y" OR GI$ = "y" THEN GI$ = "Y" ELSE GI$ = "N"
+2440 '************** PRINT HEADING, DIAGRAM AND PUMPING SCHEDULE ***************
+2450 LPRINT
+2460 LPRINT
+2470 LPRINT "********************************************************************************"
+2480 CLS : PRINT "THINKING, PLEASE WAIT"
+2490 LPRINT
+2500 LPRINT "                   STREAM DEPLETION USING GLOVER TECHNIQUES"
+2510 LPRINT
+2520 TA1 = (80 - LEN(head1$)) / 2: TA2 = (80 - LEN(HEAD2$)) / 2: TA3 = (80 - LEN(DTE$)) / 2
+2530 LPRINT TAB(TA1); head1$: LPRINT TAB(TA2); HEAD2$: LPRINT TAB(TA3); DTE$
+2540 LPRINT
+2550 LPRINT "********************************************************************************"
+2560 LPRINT
+2570 LPRINT
+2580 IF ZZSEG$ = "N" THEN GOTO 2760
+2590 LPRINT "Z1="; Z1; "FEET,  Z2="; Z2; "FEET"
+2600 IF Z1 < 0 THEN GOTO 2630
+2610 LPRINT TAB(15); ":<--Z1-->"; TAB(30); LL$(1)
+2620 GOTO 2640
+2630 LPRINT "<------Z1---->:"; TAB(30); LL$(1)
+2640 IF Z2 < 0 THEN GOTO 2700
+2650 IF Z2 = B THEN GOTO 2680
+2660 LPRINT TAB(15); ":<----Z2---->"; TAB(30); LL$(2)
+2670 GOTO 2710
+2680 LPRINT TAB(15); ":<-----Z2----->"; LL$(2)
+2690 GOTO 2710
+2700 LPRINT "        <-Z2->:"; TAB(30); LL$(2)
+2710 LPRINT TAB(30); LL$(3)
+2720 FOR x = 4 TO 7
+2730 LPRINT L$(x); TAB(30); LL$(x)
+2740 NEXT x
+2750 GOTO 2790
+2760 FOR x = 1 TO 7
+2770 LPRINT L$(x); TAB(30); LL$(x)
+2780 NEXT x
+2790 IF BI = 4 THEN GOTO 2930
+2800 IF BI = 2 THEN GOTO 2830
+2810 LPRINT TAB(11); DXX; "'"; TAB(30); LL$(8)
+2820 GOTO 2840
+2830 LPRINT TAB(11); DXX; "'"; TAB(21); W; "'"; TAB(30); LL$(8)
+2840 LPRINT L$(9); TAB(30); LL$(9)
+2850 IF BI = 3 THEN GOTO 2880
+2860 LPRINT L$(10); TAB(30); LL$(10)
+2870 GOTO 2890
+2880 LPRINT TAB(15); ":<-"; B; "'"; TAB(28); "->"; LL$(10)
+2890 FOR x = 11 TO 18
+2900 LPRINT L$(x); TAB(30); LL$(x)
+2910 NEXT x
+2920 GOTO 2980
+2930 FOR x = 8 TO 12
+2940 LPRINT L$(x)
+2950 NEXT x
+2960 LPRINT "SDF="; SDF; "DAYS"
+2970 GOTO 2990
+2980 LPRINT "T="; TR; "GPD/FT,   S="; S
+2990 LPRINT "NOT DRAWN TO SCALE"
+3000 '**** GET LENGTH OF PUMP. PERIODS AND # OF TIME STEPS FOR CALC. PURPOSES **
+3010 IF PFOT$ = "Y" THEN GOTO 3090
+3020 MN = 1000000!
+3030 FOR x = 1 TO np
+3040 IF DELT(x) > MN THEN GOTO 3060
+3050 MN = DELT(x)
+3060 NEXT x
+3070 dela = MN
+3080 GOTO 3100
+3090 dela = TBP
+3100 ADF = 0
+3110 FOR x = 1 TO np
+3120 A = DELT(x) / dela
+3130 IF (A - INT(A)) = 0 THEN GOTO 3150
+3140 ADF = 1
+3150 NEXT x
+3160 IF (TBP / dela - INT(TBP / dela)) > 0 THEN GOTO 3180
+3170 IF ADF = 0 THEN GOTO 3200
+3180 dela = dela - 1
+3190 GOTO 3100
+3200 NPA = TT / dela
+3210 '********** PRINT PUMPING SCHEDULE AND BRANCH TO SOLVE ROUTINES ***********
+3220 GOSUB 6790
+3230 GOSUB 6550
+3240 PRINT "COMPUTATIONS BEGIN AT "; TIME$
+3250 IF ZZSEG$ = "Y" OR ZZSEG$ = "y" THEN GOTO 4240
+3260 IF BI = 2 THEN GOTO 3360
+3270 '******** SOLVE DEPLETION FOR OPTION 1, 3 AND 4 (ENTIRE STREAM) ***********
+3280 FOR x = 1 TO NPA
+3290 T = T + dela
+3300 IF BI = 4 THEN U = (SDF / (4 * fact * T)) ^ .5 ELSE U = DXX / ((4 * TR * fact * T / (S * 7.481)) ^ .5)
+3310 GOSUB 5490
+3320 QQ(x) = BQQ
+3330 VV(x) = SVV
+3340 NEXT x
+3350 GOTO 3600
+3360 '*************** SOLVE DEPLETION FOR OPTION 2 *****************************
+3370 FOR x = 1 TO NPA
+3380 T = T + dela
+3390 QS = 0
+3400 VS = 0
+3410 YY = -DXX
+3420 FAC = 1
+3430 YY = YY + 2 * DXX
+3440 U = YY / ((4 * TR * fact * T / (S * 7.481)) ^ .5)
+3450 GOSUB 5490
+3460 QS = QS + BQQ * FAC
+3470 VS = VS + SVV * FAC
+3480 IF BQQ = 0 THEN GOTO 3570
+3490 YY = YY - 2 * DXX + 2 * W
+3500 U = YY / ((4 * TR * fact * T / (S * 7.481)) ^ .5)
+3510 GOSUB 5490
+3520 QS = QS + BQQ * FAC
+3530 VS = VS + SVV * FAC
+3540 IF BQQ = 0 THEN GOTO 3570
+3550 FAC = FAC * (-1)
+3560 GOTO 3430
+3570 QQ(x) = QS
+3580 VV(x) = VS
+3590 NEXT x
+3600 '******** USING SUPERPOSITION, GENERATE DEPLETION VALUES FOR PRINTING *****
+3610 ADEL = 1
+3620 FOR J = 1 TO np
+3630 N = 0
+3640 IF q(J) = 0 THEN GOTO 3770
+3650 FOR x = ADEL TO NPA
+3660 N = N + 1
+3670 qd(x) = qd(x) + QQ(N) * q(J)
+3680 vd(x) = vd(x) + VV(N) * q(J) * fact * N * dela
+3690 NEXT x
+3700 N = 0
+3710 IF np = 1 THEN GOTO 3780
+3720 FOR x = (1 + ZZAT(J) / dela) TO NPA
+3730 N = N + 1
+3740 qd(x) = qd(x) - QQ(N) * q(J)
+3750 vd(x) = vd(x) - VV(N) * q(J) * fact * N * dela
+3760 NEXT x
+3770 ADEL = 1 + ZZAT(J) / dela
+3780 NEXT J
+3790 '************************ PRINT DEPLETION *********************************
+3800 PRINT "COMPUTATIONS END AT "; TIME$
+3810 PRINT "PLEASE WAIT FOR OUTPUT."
+3820 LPRINT
+GOSUB 8020
+3830 LPRINT
+3840 LPRINT
+3850 IF np > 1 THEN GOTO 3920
+3860 LPRINT TAB(34); "STREAM DEPLETION"
+3870 LPRINT
+3880 LPRINT "                                                                         VOL. OF DEP."
+3890 LPRINT "          TIME     DEP. RATE     DEP. RATE  VOL. OF DEP.  VOL. OF DEP.     THIS STEP"
+3900 LPRINT ZZ$; "         (GPM)           (%)"; ZZZ$; "           (%)"; ZZZ$
+3910 GOTO 3970
+3920 LPRINT TAB(20); "STREAM DEPLETION"
+3930 LPRINT
+3940 LPRINT "                                            VOL. OF DEP."
+3950 LPRINT "          TIME     DEP. RATE  VOL. OF DEP.     THIS STEP"
+3960 LPRINT ZZ$; "         (GPM)"; ZZZ$; ZZZ$
+3970 LPRINT
+3980 IF VUNIT$ = "GALLONS" THEN GOTO 4010
+3990 VFAC = 1440 / 325900!
+4000 GOTO 4030
+4010 VFAC = 1440
+4020 VDTP = 0
+4030 FOR x = 1 TO NPA
+4040 IF PFOT$ = "Y" THEN GOTO 4140
+4050 PFLG = 0
+4060 TDELA = TDELA + dela
+4070 FOR J = 1 TO np
+4080 IF TDELA = ZZAT(J) THEN GOTO 4100
+4090 GOTO 4110
+4100 PFLG = 1
+4110 NEXT J
+4120 IF PFLG = 1 THEN GOTO 4160
+4130 GOTO 4210
+4140 IF ((x * dela / TBP) - (INT(x * dela / TBP))) = 0 THEN GOTO 4160
+4150 GOTO 4210
+PRINT "np = "; np, "at line 4150": INPUT geek
+4160 IF np > 1 THEN GOTO 4190
+IF opt5 = 2 THEN GOSUB 8200
+4170 LPRINT USING "############"; dela * x; : LPRINT TAB(15); : LPRINT USING "#########.####"; qd(x); qd(x) * 100 / q(1); vd(x) * VFAC; vd(x) * 100 / (q(1) * dela * x * fact); (vd(x) * VFAC - VDTP)
+4180 GOTO 4200
+4190 LPRINT USING "############"; dela * x; : LPRINT TAB(15); : LPRINT USING "#########.####"; qd(x); vd(x) * VFAC; (vd(x) * VFAC - VDTP)
+IF opt5 = 2 THEN GOSUB 8200
+4200 VDTP = vd(x) * VFAC
+4210 NEXT x
+4220 IF GI$ = "Y" THEN GOTO 5650
+IF opt5 = 2 THEN CLOSE #3
+4230 END
+4240 '*************** SOLVE DEPLETION FOR SEGMENT OF STREAM ********************
+4250 IF Z1 = -99999! THEN IFLG = 1: Z1 = 0
+4260 IF Z2 = 99999! THEN IFLG = 1: Z2 = 0
+4270 YY = DXX
+4280 QL = 0
+4290 QN = 0
+4300 ON BI GOTO 4310, 4540, 5040
+' Infinite aquifer
+4310 L1 = Z1
+4320 L2 = Z2
+4330 FOR x = 1 TO NPA
+4340 T = T + dela
+4350 U = YY / ((4 * TR * fact * T / (S * 7.481)) ^ .5)
+4360 IF U > 2.9 THEN GOTO 4510
+4370 IF IFLG = 0 THEN GOTO 4410
+4380 GOSUB 5490
+4390 QQ(x) = .5 * BQQ
+4400 VV(x) = .5 * SVV
+4410 U = 4 * TR * T * fact / (S * 7.481)
+4420 GOSUB 7130
+4430 QQ(x) = QQ(x) + BQQ
+4440 QN = BQQ
+4450 U = 4 * TR * (T - dela / 2) * fact / (S * 7.481)
+4460 GOSUB 7130
+4470 QP = BQQ
+4480 GOSUB 7300
+4490 AVV = AVV + SVV
+4500 VV(x) = VV(x) + AVV / T
+4510 QL = QN
+4520 NEXT x
+4530 GOTO 3600
+' Alluvial aquifer
+4540 FAC = 1
+4550 L1 = Z1
+4560 L2 = Z2
+4570 FOR x = 1 TO NPA
+4580 FAC = 1
+4590 QL = QN
+4600 QN = 0
+4610 QP = 0
+4620 T = T + dela
+4630 YY = -DXX
+4640 YY = YY + 2 * DXX
+4650 WW = 0
+4660 IF IFLG = 0 THEN GOTO 4720
+4670 U = YY / ((4 * TR * fact * T / (S * 7.481)) ^ .5)
+4680 GOSUB 5490
+4690 WW = WW + BQQ
+4700 QQ(x) = BQQ * FAC / 2 + QQ(x)
+4710 VV(x) = VV(x) + SVV * FAC / 2
+4720 U = 4 * TR * T * fact / (S * 7.481)
+4730 IF L1 <> L2 THEN GOSUB 7130 ELSE GOTO 4810
+4740 WW = WW + BQQ
+4750 QQ(x) = QQ(x) + BQQ * FAC
+4760 QN = QN + BQQ * FAC
+4770 U = 4 * TR * (T - dela / 2) * fact / (S * 7.481)
+4780 XYZ = U
+4790 IF L1 <> L2 THEN GOSUB 7130
+4800 QP = QP + BQQ * FAC
+4810 YY = YY - 2 * DXX + 2 * W
+4820 IF IFLG = 0 THEN GOTO 4880
+4830 U = YY / ((4 * TR * fact * T / (S * 7.481)) ^ .5)
+4840 GOSUB 5490
+4850 WW = WW + BQQ
+4860 QQ(x) = QQ(x) + BQQ * FAC / 2
+4870 VV(x) = VV(x) + SVV * FAC / 2
+4880 U = XYZ
+4890 IF L1 <> L2 THEN GOSUB 7130 ELSE GOTO 4960
+4900 QP = QP + BQQ * FAC
+4910 U = 4 * TR * T * fact / (S * 7.481)
+4920 IF L1 <> L2 THEN GOSUB 7130
+4930 WW = WW + BQQ
+4940 QN = QN + BQQ * FAC
+4950 QQ(x) = QQ(x) + BQQ * FAC
+4960 IF ABS(WW) < .00001 THEN GOTO 4990
+4970 FAC = FAC * (-1)
+4980 GOTO 4640
+4990 IF L1 <> L2 THEN GOSUB 7300 ELSE GOTO 5020
+5000 AVV = AVV + SVV
+5010 VV(x) = VV(x) + AVV / T
+5020 NEXT x
+5030 GOTO 3600
+5040 FOR x = 1 TO NPA
+5050 T = T + dela
+5060 U = YY / ((4 * TR * fact * T / (S * 7.481)) ^ .5)
+5070 IF U > 2.9 THEN GOTO 5460
+5080 IF IFLG = 0 THEN GOTO 5260
+5090 GOSUB 5490
+5100 QQ(x) = BQQ
+5110 VV(x) = SVV
+5120 IF B = Z2 THEN GOTO 5470
+5130 L1 = Z2
+5140 L2 = 2 * B - Z2
+5150 U = 4 * TR * T * fact / (S * 7.481)
+5160 GOSUB 7130
+5170 QQ(x) = QQ(x) - BQQ
+5180 QN = BQQ
+5190 U = 4 * TR * (T = dela / 2) * fact / (S * 7.481)
+5200 GOSUB 7130
+5210 QP = BQQ
+5220 GOSUB 7300
+5230 AVV = AVV + SVV
+5240 VV(x) = VV(x) - AVV / T
+5250 GOTO 5460
+5260 L1 = Z1
+5270 L2 = Z2
+5280 U = 4 * TR * T * fact / (S * 7.481)
+5290 GOSUB 7130
+5300 QQ(x) = BQQ
+5310 QN = BQQ
+5320 U = 4 * TR * (T - dela / 2) * fact / (S * 7.481)
+5330 GOSUB 7130
+5340 QP = BQQ
+5350 L1 = 2 * B - Z2
+5360 L2 = 2 * B - Z1
+5370 GOSUB 7130
+5380 QP = BQQ + QP
+5390 U = 4 * TR * T * fact / (S * 7.481)
+5400 GOSUB 7130
+5410 QN = QN + BQQ
+5420 QQ(x) = QQ(x) + BQQ
+5430 GOSUB 7300
+5440 AVV = AVV + SVV
+5450 VV(x) = AVV / T
+5460 QL = QN
+5470 NEXT x
+5480 GOTO 3600
+5490 '********* SUB TO EVALUATE COMPLIMENTARY ERROR FUNCTION AND 2nd REPEATED
+5500 '********* INTEGRAL OF COMPLIMENTARY ERROR FUNCTION ***********************
+5510 IF U > 2.9 THEN BQQ = 0: SVV = 0: RETURN
+5520 SUMM = U
+5530 M = 0
+5540 N = U ^ 2
+5550 TERM = U
+5560 P = 1
+5570 M = M + 1
+5580 P = P + 2
+5590 TERM = (-1 * TERM * N * (P - 2)) / (P * M)
+5600 SUMM = SUMM + TERM
+5610 IF (ABS(TERM)) > 1E-08 THEN GOTO 5570
+5620 BQQ = 1 - 2 * SUMM / (PI ^ .5)
+5630 SVV = BQQ * (1 + 2 * (U ^ 2)) - (2 * U * E ^ -(U ^ 2)) / (PI ^ .5)
+5640 RETURN
+5650 '************************ DRAW GRAPH **************************************
+5660 MAXVD = -1000000!
+5670 MAXQD = -1000000!
+5680 MINVD = 1000000!
+5690 MINQD = 1000000!
+5700 LPRINT CHR$(15);
+5710 LPRINT CHR$(27); "1";
+5720 FOR x = 1 TO NPA
+5730 IF qd(x) > MAXQD THEN MAXQD = qd(x)
+5740 IF qd(x) < MINQD THEN MINQD = qd(x)
+5750 IF vd(x) > MAXVD THEN MAXVD = vd(x)
+5760 IF vd(x) < MINVD THEN MINVD = vd(x)
+5770 NEXT x
+5780 IF MINVD > 0 THEN MINVD = 0
+5790 IF MINQD > 0 THEN MINQD = 0
+5800 LVD = MAXVD - MINVD
+5810 LQD = MAXQD - MINQD
+5820 LBP = INT(50 / NPA) + 1
+5830 LPRINT
+5840 LPRINT
+5850 LPRINT
+5860 LPRINT TAB(20); "STREAM DEPLETION VS TIME ("; TU$(TUI); ")"
+5870 LPRINT
+5880 LPRINT
+5890 LPRINT TAB(10); "***** RATE OF DEPLETION (GPM)"
+5900 LPRINT
+5910 FOR IZ = 1 TO 6
+5920 IF IZ <> 1 THEN LPRINT TAB(IZ * 20 - 19);
+5930 LPRINT USING "##########.##"; MINQD + (IZ - 1) * LQD / 5;
+5940 NEXT IZ
+5950 LPRINT
+5960 LPRINT TAB(10); "+-------------------+-------------------+-------------------+-------------------+-------------------+"
+5970 LPRINT
+5980 LPRINT
+5990 LPRINT TAB(10); "+++++ VOL. OF DEPLETION ("; VUNIT$; ")"
+6000 LPRINT
+6010 FOR IZ = 1 TO 6
+6020 IF IZ <> 1 THEN LPRINT TAB(IZ * 20 - 19);
+6030 LPRINT USING "##########.##"; MINVD * VFAC + (IZ - 1) * VFAC * LVD / 5;
+6040 NEXT IZ
+6050 LPRINT
+6060 LPRINT TAB(7); "0  +-------------------+-------------------+-------------------+-------------------+-------------------+"
+6070 FOR x = 1 TO NPA
+6080 qd(x) = (qd(x) - MINQD) * 100 / LQD + 10
+6090 vd(x) = (vd(x) - MINVD) * 100 / LVD + 10
+6100 IF LBP = 1 THEN GOTO 6140
+6110 FOR J = 1 TO (LBP - 1)
+6120 LPRINT TAB(10); "!"
+6130 NEXT J
+6140 IF CINT(vd(x)) > CINT(qd(x)) THEN GOTO 6380
+6150 IF CINT(vd(x)) = CINT(qd(x)) THEN GOTO 6270
+6160 IF (x / 5 - INT(x / 5)) = 0 THEN GOTO 6220
+6170 IF vd(x) < 10.5 THEN GOTO 6200
+6180 LPRINT TAB(10); "!"; TAB(vd(x)); "+"; TAB(qd(x)); "*"
+6190 GOTO 6480
+6200 LPRINT TAB(10); "+"; TAB(qd(x)); "*"
+6210 GOTO 6480
+6220 IF vd(x) < 10.5 THEN GOTO 6250
+6230 LPRINT TAB(5); (x * dela); TAB(10); "+"; TAB(vd(x)); "+"; TAB(qd(x)); "*"
+6240 GOTO 6480
+6250 LPRINT TAB(5); (x * dela); TAB(10); "+"; TAB(qd(x)); "*"
+6260 GOTO 6480
+6270 IF (x / 5 - INT(x / 5)) = 0 THEN GOTO 6330
+6280 IF qd(x) < 10.5 THEN GOTO 6310
+6290 LPRINT TAB(10); "!"; TAB(qd(x)); "*"
+6300 GOTO 6480
+6310 LPRINT TAB(10); "*"
+6320 GOTO 6480
+6330 IF qd(x) < 10.5 THEN GOTO 6360
+6340 LPRINT TAB(5); (x * dela); TAB(10); "!"; TAB(qd(x)); "*"
+6350 GOTO 6480
+6360 LPRINT TAB(5); (x * dela); TAB(10); "*"
+6370 GOTO 6480
+6380 IF (x / 5 - INT(x / 5)) = 0 THEN GOTO 6440
+6390 IF qd(x) < 10.5 THEN GOTO 6420
+6400 LPRINT TAB(10); "!"; TAB(qd(x)); "*"; TAB(vd(x)); "+"
+6410 GOTO 6480
+6420 LPRINT TAB(10); "*"; TAB(vd(x)); "+"
+6430 GOTO 6480
+6440 IF qd(x) < 10.5 THEN GOTO 6470
+6450 LPRINT TAB(5); (x * dela); TAB(10); "+"; TAB(qd(x)); "*"; TAB(vd(x)); "+"
+6460 GOTO 6480
+6470 LPRINT TAB(5); (x * dela); TAB(10); "*"; TAB(vd(x)); "+"
+6480 NEXT x
+6490 LPRINT
+6500 LPRINT TAB(10); "+-------------------+-------------------+-------------------+-------------------+-------------------+"
+6510 LPRINT
+6520 LPRINT "IF RATE AND VOLUME HAVE SAME COORDINATES ONLY AN (*) IS PRINTED."
+6530 LPRINT CHR$(27); "@";
+6540 END
+6550 '********** SUBROUTINE FOR PRINTING PUMPING SCHEDULE *********************
+6560 LPRINT
+6570 LPRINT
+6580 LPRINT
+6590 LPRINT TAB(31); "PUMPING SCHEDULE"
+6600 LPRINT TAB(23); "TOTAL TIME SIMULATED="; TT; TU$(TUI)
+6610 LPRINT
+6620 LPRINT "                                                    VOL. PUMPED     CUM. VOL."
+6630 LPRINT "PUMPING           Q          LENGTH     CUM. TIME   THIS PERIOD      PUMPED"
+6640 ZZ$ = "(" + TU$(TUI) + ")": FOR II = 1 TO (14 - LEN(ZZ$)): ZZ$ = " " + ZZ$: NEXT II
+6650 ZZZ$ = "(" + VUNIT$ + ")": FOR II = 1 TO (14 - LEN(ZZZ$)): ZZZ$ = " " + ZZZ$: NEXT II
+6660 LPRINT "PERIOD          (GPM)"; ZZ$; ZZ$; ZZZ$; ZZZ$
+6670 LPRINT
+6680 FOR x = 1 TO np
+6690 LPRINT USING "####"; x; : LPRINT TAB(8);
+6700 LPRINT USING "##########.###"; q(x);
+6710 LPRINT USING "##############"; DELT(x); ZZAT(x);
+6720 LPRINT USING "##########.###"; VPTP(x); AVP(x)
+6730 NEXT x
+6740 LPRINT
+6750 LPRINT
+6760 LPRINT
+6770 LPRINT
+6780 RETURN
+6790 '************** SUBROUTINE FOR DETERMINING VOL. PUMPED AND VOL. UNITS ****
+6800 FOR x = 1 TO np
+6810 VPTP(x) = q(x) * DELT(x) * fact * 1440
+6820 AVSUM = AVSUM + VPTP(x)
+6830 AVP(x) = AVSUM
+6840 NEXT x
+6850 IF (ABS(AVSUM)) > 1000000 THEN GOTO 6880
+6860 VUNIT$ = "GALLONS"
+6870 RETURN
+6880 FOR x = 1 TO np
+6890 VPTP(x) = VPTP(x) / 325900!
+6900 AVP(x) = AVP(x) / 325900!
+6910 NEXT x
+6920 VUNIT$ = "ACRE-FEET"
+6930 RETURN
+6940 '*********** SUBROUTINE TO INPUT CYCLIC PUMPING SCHEDULE ******************
+6950 FOR x = 1 TO NPPC
+6960 PRINT "FOR PUMPING PERIOD #"; x; "ENTER LENGTH OF PUMPING PERIOD IN "; TU$(TUI); "  (LENGTH MUST BE WHOLE NUMBER OF TIME UNITS)"
+6970 INPUT LTP(x)
+6980 PRINT "ENTER PUMPING RATE(GPM) FOR PUMPING PERIOD #"; x
+6990 INPUT QTP(x)
+7000 NEXT x
+7010 I = 0
+7020 TT = 0
+7030 FOR x = 1 TO NC
+7040 FOR J = 1 TO NPPC
+7050 I = I + 1
+7060 DELT(I) = LTP(J)
+7070 TT = TT + DELT(I)
+7080 ZZAT(I) = TT
+7090 q(I) = QTP(J)
+7100 NEXT J
+7110 NEXT x
+7120 RETURN
+7130 '*************** SUBROUTINE FOR q/Q (STREAM SEGMENT) **********************
+7140 SIMN = ABS(INT((L2 - L1) / YY)) * 20
+7150 IF SIMN < 40 THEN SIMN = 40
+7160 IF SIMN > 100 THEN SIMN = 100
+7170 DELX = (L2 - L1) / SIMN
+7180 XC = L1 - DELX
+7190 FOR N = 1 TO (SIMN + 1)
+7200 XC = XC + DELX
+7210 AB = (YY ^ 2) + (XC ^ 2)
+7220 IF (AB / U) > 60 THEN H(N) = 0 ELSE H(N) = (E ^ (-(AB / U))) / AB
+7230 NEXT N
+7240 BQQ = H(1) + H(SIMN + 1)
+7250 FOR N = 2 TO SIMN
+7260 IF (N / 2 - INT(N / 2)) = 0 THEN BQQ = BQQ + 4 * H(N) ELSE BQQ = BQQ + 2 * H(N)
+7270 NEXT N
+7280 IF BQQ < 1E-33 THEN BQQ = 0 ELSE BQQ = BQQ * DELX * YY / (3 * 3.1415927#)
+7290 RETURN
+7300 '**************** SUBROUTINE FOR v/V (STREAM SEGMENT) *********************
+7310 SVV = ((QN + QL) * dela / 2 + (QP - (QL + QN) / 2) * dela * 2 / 3)
+7320 RETURN
+
+8020 REM
+PRINT "Do you want to save results on disk?"
+PRINT "1 = no": PRINT "2 = yes"
+INPUT opt5
+IF opt5 = 1 THEN RETURN
+8090 PRINT "Enter file name for output file"
+INPUT filout$
+OPEN filout$ FOR OUTPUT AS #3
+PRINT #3, opt5, head1$
+PRINT #3, "step     q/Q                v/V"
+RETURN
+8200 REM   print results to file
+PRINT #3, dela * x; qd(x) / q(1); vd(x) / (q(1) * dela * x * fact)
+RETURN
+END
+
+
+' 8000 IF ERR = 53 THEN PRINT "no files currently on disk": RESUME 8090
+' PRINT "disk problem": opt5 = 1: RETURN
+' REM   open file to save results on disk
+' 8020 REM
+' PRINT "Do you want to save results on disk?"
+' PRINT "1 = no": PRINT "2 = yes"
+' INPUT opt5
+' IF opt5 = 1 THEN RETURN
+' ON ERROR GOTO 8000
+' REM PRINT "Directory of drive B": FILES "b:*.*"
+' 8090 PRINT "Enter file name for output file"
+' INPUT filout$
+' OPEN filout$ FOR OUTPUT AS #3
+' ON ERROR GOTO 0
+' PRINT #3, opt5, head1$
+' PRINT #3, "step     q/Q                v/V"
+' RETURN
+' 8200 REM   print results to file
+' PRINT #3, dela * x; qd(x) / q(1); vd(x) / (q(1) * dela * x * fact)
+' RETURN
+' END
+

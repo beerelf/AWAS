@@ -1,0 +1,159 @@
+;; -*- coding: emacs-mule; -*-
+;; --------------------------------------------------------------------------
+;; Desktop File for Emacs
+;; --------------------------------------------------------------------------
+;; Created Tue Oct 24 10:11:26 2006
+;; Emacs version 21.3.1
+
+;; Global section:
+(setq desktop-missing-file-warning nil)
+(setq tags-file-name nil)
+(setq tags-table-list nil)
+(setq search-ring '("read" "m_w" "ww" "calcstr" "6940" "nppc" "npp" "printi" "960" "6940" "6950" "6960" "ltp" "nppc" "4150" "head1"))
+(setq regexp-search-ring nil)
+(setq register-alist nil)
+
+;; Buffer section:
+(desktop-create-buffer 205
+  "c:/Projects/SDFdaily/test.dsi"
+  "test.dsi"
+  'fundamental-mode
+  nil
+  656
+  '(nil nil)
+  nil
+  nil
+  nil)
+
+(desktop-create-buffer 205
+  "c:/Projects/SDFdaily/DEP3.BAS"
+  "DEP3.BAS"
+  'fundamental-mode
+  nil
+  1201
+  '(22522 t)
+  nil
+  nil
+  '((overwrite-mode) (case-fold-search . t)))
+
+(desktop-create-buffer 205
+  "c:/Projects/Common/utils.cpp"
+  "utils.cpp"
+  'c++-mode
+  '(abbrev-mode)
+  13728
+  '(1 t)
+  nil
+  nil
+  nil)
+
+(desktop-create-buffer 205
+  "c:/Projects/Common/basicutils.h"
+  "basicutils.h"
+  'c++-mode
+  '(abbrev-mode)
+  1
+  '(nil nil)
+  nil
+  nil
+  nil)
+
+(desktop-create-buffer 205
+  "c:/Projects/Common/basicutils.cpp"
+  "basicutils.cpp"
+  'c++-mode
+  '(abbrev-mode)
+  2124
+  '(1 t)
+  nil
+  nil
+  nil)
+
+(desktop-create-buffer 205
+  "c:/Projects/SDFdaily/sdfdata.h"
+  "sdfdata.h"
+  'c++-mode
+  '(abbrev-mode)
+  199
+  '(1 t)
+  nil
+  nil
+  nil)
+
+(desktop-create-buffer 205
+  "c:/Projects/Common/utils.h"
+  "utils.h"
+  'c++-mode
+  '(abbrev-mode)
+  3601
+  '(3391 t)
+  nil
+  nil
+  nil)
+
+(desktop-create-buffer 205
+  "c:/Projects/SDFdaily/Main.h"
+  "Main.h"
+  'c++-mode
+  '(abbrev-mode)
+  502
+  '(498 t)
+  nil
+  nil
+  nil)
+
+(desktop-create-buffer 205
+  "c:/Projects/SDFdaily/stdafx.h"
+  "stdafx.h"
+  'c++-mode
+  '(abbrev-mode)
+  687
+  '(808 t)
+  nil
+  nil
+  nil)
+
+(desktop-create-buffer 205
+  "c:/Projects/SDFdaily/SEODEP2/SEODEP/Form1.frm"
+  "Form1.frm"
+  'visual-basic-mode
+  '(abbrev-mode)
+  22642
+  '(981 t)
+  nil
+  nil
+  nil)
+
+(desktop-create-buffer 205
+  "c:/Projects/SDFdaily/SEODEP2/SEODEP2.BAS"
+  "SEODEP2.BAS"
+  'visual-basic-mode
+  '(abbrev-mode)
+  15875
+  '(25137 t)
+  nil
+  nil
+  nil)
+
+(desktop-create-buffer 205
+  "c:/Projects/SDFdaily/SDFdata.cpp"
+  "SDFdata.cpp"
+  'c++-mode
+  '(abbrev-mode)
+  84139
+  '(72928 t)
+  nil
+  nil
+  nil)
+
+(desktop-create-buffer 205
+  "c:/Projects/SDFdaily/SDFDaily.cpp"
+  "SDFDaily.cpp"
+  'c++-mode
+  '(abbrev-mode)
+  1318
+  '(875 t)
+  nil
+  nil
+  nil)
+

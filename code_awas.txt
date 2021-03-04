@@ -1,0 +1,512 @@
+void
+SiteData::Calculate(bool useAvgDaily, errorFuncPtr errorFunc)
+{
+  // Set q to negative if this is a recharge site.
+  int m_pumpingSign = (m_siteType == WELL ? 1 : -1);
+
+  // Get length of pumping periods and number of timesteps (line 3000)
+  int dela;
+  int nppc = m_pumpingRecTD.GetNPeriods(PumpingRecTD::Q);
+  int npa = CalcNumPumpPeriods(&dela);
+
+  int np = m_nc * nppc;
+
+  // Allocate space
+  m_qq.resize(npa);
+  m_vv.resize(npa);
+  m_qd.resize(npa);
+  m_vd.resize(npa);
+
+  // Initialize
+  for (int inpa=0; inpa<m_qq.size(); inpa++) {
+    m_qq[inpa] = 1.0; // initialize to 1 to allow for instantaneous effect
+    m_vv[inpa] = 1.0; // when the calculation would evaluate to zero or otherwise fail.
+    m_qd[inpa] = 0.0;
+    m_vd[inpa] = 0.0;
+  }
+
+  //m_outputRecArray.resize(npa);
+  m_outputRecArray.resize(0);
+
+  // Get pumping volume
+  m_vunits = "gallons";
+  m_delt.resize(np);
+  m_q.resize(np);
+  m_vptp.resize(np);
+  m_avp.resize(np);
+  m_zzat.resize(np);
+
+  int tt(0);
+  double avsum(0);
+  m_pumpingRecTD.SetConversionFactor(1440);
+  for (int x=0; x<np; x++) {
+    m_delt[x] = m_pumpingRecTD.GetValue(PumpingRecTD::Delta, x % nppc);
+    m_q[x] = m_pumpingRecTD.GetValue(PumpingRecTD::Q, x % nppc);
+
+    // Change no data values to zeros.  This is the case when we are using non-calendar years.
+    if (m_delt[x] < 1) {
+      m_delt[x] = 1;
+    }
+    if (m_q[x] < 0) {
+      m_q[x] = 0;
+    }
+
+    m_vptp[x] = m_q[x] * m_delt[x] * m_pumpingRecTD.m_cf * GetFact(x, !useAvgDaily);
+    avsum += m_vptp[x];
+    m_avp[x] = avsum;
+
+    // Also calculate zzat
+    if (m_delt[x] > 0) {
+      tt += m_delt[x];
+    }
+    m_zzat[x] = tt;
+  }
+
+  //if (fabs(avsum) > 1000000) {
+  // Always use acre-feet so that all sites will be consistent
+  {
+    // Convert to acre-feet
+    avsum = 0;
+    m_vunits = "acre-feet";
+    m_pumpingRecTD.SetConversionFactor(1440/325851.0);
+    //m_pumpingRecTD.SetConversionFactor(1440/325900.0);
+    for (int x=0; x<np; x++) {
+      m_vptp[x] = m_q[x] * m_delt[x] * m_pumpingRecTD.m_cf * GetFact(x, !useAvgDaily);
+      avsum += m_vptp[x];
+      m_avp[x] = avsum;
+    }
+  }
+
+  // Now we can begin solving.
+  int x;
+
+  if (m_bi != URF) {
+    if (m_zzseg) {		// depletion for portion of stream
+
+      bool iflg = FALSE;
+      if (m_z1 == -99999) {
+	m_z1 = 0;
+	iflg = TRUE;
+      }
+      if (m_z2 == 99999) {
+	m_z2 = 0;
+	iflg = TRUE;
+      }
+
+      double yy = m_dxx;
+      double ql = 0, qn = 0;
+
+      double qp = 0; //!! not in basic code
+      double avv = 0; //!! not in basic code
+
+      switch (m_bi) {
+      case EFFECTIVE_SDF:
+	break;
+      case INFINITE_AQUIFER: {
+	double l1 = m_z1, l2 = m_z2;
+	double t = 0;
+	if (m_tr > 0) {
+	  for (x=0; x<npa; x++) {
+	    t += dela;
+	    m_qq[x] = 0;
+	    m_vv[x] = 0;
+	    double u = yy / sqrt(4.0 * m_tr * GetFact(x, !useAvgDaily) * t / (m_s * 7.48051945));
+	    if (u <= 2.9) {
+	      double bqq, svv;
+	      if (iflg) {
+		CALL_MEMBER_FN(*this, errorFunc)(u, &bqq, &svv);
+
+		m_qq[x] = .5 * bqq;
+		m_vv[x] = .5 * svv;
+	      }
+	      u = 4 * m_tr * t * GetFact(x, !useAvgDaily) / (m_s * 7.48051945);
+
+	      bqq = CalcStreamQ(l1, l2, yy, u);
+	      m_qq[x] += bqq;
+	      qn = bqq;
+
+	      u = 4 * m_tr * (t-dela/2.0) * GetFact(x, !useAvgDaily) / (m_s * 7.48051945);
+	      bqq = CalcStreamQ(l1, l2, yy, u);
+	      qp = bqq;
+
+	      svv = CalcStreamV(qn, ql, qp, dela);
+	      avv += svv;
+
+	      m_vv[x] += avv / t;
+
+	    }	    
+	    ql = qn;
+
+	  }
+	}
+      }
+	break;
+      case ALLUVIAL_AQUIFER: {
+	double t = 0;
+	double l1 = m_z1, l2 = m_z2; // 4560
+	double xyz;
+
+	if (m_tr > 0) {
+	  for (x=0; x<npa; x++) {
+	    m_qq[x] = 0;
+	    m_vv[x] = 0;
+
+	    double fac = 1;	// 4580
+	    ql = qn;		// 4590
+	    qn = 0;		// 4600
+	    qp = 0;		// 4610
+	    t += dela;		// 4620
+	    yy = -m_dxx;		// 4630
+
+	    double ww;
+	    do {
+	      yy += 2 * m_dxx;	// 4640
+	      ww = 0;		// 4650
+	      double u = 0;
+	      xyz = 0;
+
+	      double bqq, svv;
+	      if (iflg) {		// 4660
+		u = yy / sqrt(4 * m_tr * t * GetFact(x, !useAvgDaily) / (m_s * 7.48051945)); // 4670
+
+		CALL_MEMBER_FN(*this, errorFunc)(u, &bqq, &svv); // 4680 GOSUB 5490
+
+		ww += bqq;	// 4690
+		m_qq[x] += bqq * fac/2.0;	// 4700
+		m_vv[x] += svv * fac/2.0;	// 4710
+	      } // close 4660
+
+	      u = 4 * m_tr * t * GetFact(x, !useAvgDaily) / (m_s * 7.48051945);	// 4720
+
+	      if (l1 != l2) {	// 4730
+		bqq = CalcStreamQ(l1, l2, yy, u);	// GOSUB 7130 (SUBROUTINE FOR q/Q (STREAM SEGMENT))
+		ww += bqq;	// 4740
+		m_qq[x] += bqq * fac; // 4750
+		qn += bqq * fac;	// 4760
+		u = 4 * m_tr * (t - dela/2.0) * GetFact(x, !useAvgDaily) / (m_s * 7.48051945); // 4770
+		xyz = u;		// 4780
+
+		bqq = CalcStreamQ(l1, l2, yy, u);	// GOSUB 7130 (SUBROUTINE FOR q/Q (STREAM SEGMENT))
+		qp += bqq * fac;	// 4800
+	      } // close 4730
+
+	      yy = yy - 2*m_dxx + 2*m_w; // error in line 4810 // 4810
+
+	      if (iflg) {		// 4820
+		u = yy / sqrt(4 * m_tr * GetFact(x, !useAvgDaily) * t / (m_s * 7.48051945)); // 4830
+
+		CALL_MEMBER_FN(*this, errorFunc)(u, &bqq, &svv); // 4840
+		ww += bqq;	// 4850
+		m_qq[x] += bqq * fac/2.0;	// 4860
+		m_vv[x] += svv * fac/2.0;	// 4870
+	      } // close 4820
+	      u = xyz;		// 4880
+
+	      if (l1 != l2) {	// 4890
+		bqq = CalcStreamQ(l1, l2, yy, u);	// GOSUB 7130 (SUBROUTINE FOR q/Q (STREAM SEGMENT))
+		qp += bqq * fac;	// 4900
+		u = 4 * m_tr * t * GetFact(x, !useAvgDaily) / (m_s * 7.48051945); // 4910
+		bqq = CalcStreamQ(l1, l2, yy, u);	// 4920
+		ww += bqq;	// 4930
+		qn += bqq * fac;	// 4940
+		m_qq[x] += bqq * fac; // 4950
+	      } // close 4890
+
+	      fac *= -1;		// 4970
+	    } while (fabs(ww) > 0.00001);	// 4960
+
+	    if (l1 != l2) {	// 4990 SUBROUTINE FOR v/V (STREAM SEGMENT)
+	      double svv = CalcStreamV(qn, ql, qp, dela);
+	      avv += svv;		// 5000
+	      m_vv[x] += avv/t;	// 5010
+	    }
+	  } // 5020
+	}
+      }
+	break;
+      case NO_FLOW: {
+	double t = 0;
+	if (m_tr > 0) {
+	  for (x=0; x<npa; x++) {
+	    m_qq[x] = 0;
+	    m_vv[x] = 0;
+	    t += dela;
+	    double u = yy / sqrt(4 * m_tr * GetFact(x, !useAvgDaily) * t / (m_s * 7.48051945));
+	    if (u <= 2.9) {
+	      double bqq, svv;
+	      if (iflg) {
+		CALL_MEMBER_FN(*this, errorFunc)(u, &bqq, &svv);
+		m_qq[x] = bqq;
+		m_vv[x] = svv;
+
+		if (m_b == m_z2) continue;
+
+		double l1 = m_z2, l2 = 2 * m_b - m_z2;
+		u = 4 * m_tr * GetFact(x, !useAvgDaily) * t / (m_s * 7.48051945);
+
+		bqq = CalcStreamQ(l1, l2, yy, u);
+		m_qq[x] -= bqq;
+		qn = bqq;
+
+		u = 4 * m_tr * (t - dela/2.0) * GetFact(x, !useAvgDaily) / (m_s * 7.48051945);
+		bqq = CalcStreamQ(l1, l2, yy, u);
+		qp = bqq;
+
+		svv = CalcStreamV(qn, ql, qp, dela);
+		avv += svv;
+		m_vv[x] -= avv/t;
+	      }
+	      else {
+		double l1 = m_z1, l2 = m_z2;
+		u = 4 * m_tr * GetFact(x, !useAvgDaily) * t / (m_s * 7.48051945);
+		bqq = CalcStreamQ(l1, l2, yy, u);
+		m_qq[x] = bqq;
+		qn = bqq;
+		u = 4 * m_tr * (t - dela/2.0) * GetFact(x, !useAvgDaily) / (m_s * 7.48051945);
+
+		bqq = CalcStreamQ(l1, l2, yy, u);
+		qp = bqq;
+		l1 = 2 * m_b - m_z2;
+		l2 = 2 * m_b - m_z1;
+		bqq = CalcStreamQ(l1, l2, yy, u);
+		qp += bqq;
+
+		u = 4 * m_tr * t * GetFact(x, !useAvgDaily) / (m_s * 7.48051945);
+		bqq = CalcStreamQ(l1, l2, yy, u);
+		qn += bqq;
+		m_qq[x] += bqq;
+
+		svv = CalcStreamV(qn, ql, qp, dela);
+		avv += svv;
+		m_vv[x] += avv / t;
+	      }
+	    }
+	    ql = qn;
+	  }
+	  break;
+	}
+      }
+      }
+    }
+    else {
+      double u;
+      double bqq, svv;
+      if (m_bi != ALLUVIAL_AQUIFER) {
+	int t=0;
+	if (m_tr > 0 || m_bi == EFFECTIVE_SDF) {
+	  for (x=0; x<npa; x++) {
+	    t += dela;
+	    if (m_bi == EFFECTIVE_SDF) {
+	      u = sqrt(m_sdf / (4 * (GetFact(x, !useAvgDaily)) * t));
+	    }
+	    else {
+	      u = m_dxx / sqrt((4 * m_tr * GetFact(x, !useAvgDaily) * t) / (m_s * 7.48051945));
+	    }
+
+	    CALL_MEMBER_FN(*this, errorFunc)(u, &bqq, &svv);
+
+	    m_qq[x] = bqq;
+	    m_vv[x] = svv;
+	  }
+	}
+      }
+      else {
+	int t=0;
+	if (m_tr > 0 && m_w > 0 && m_s > 0) {
+	  for (x=0; x<npa; x++) {
+	    t += dela;
+	    double qs = 0, vs = 0;
+	    double yy = -m_dxx;
+	    int fac = 1;
+
+	    do {
+	      yy = yy + 2 * m_dxx;
+	      u = yy / sqrt((4 * m_tr * GetFact(x, !useAvgDaily) * t / (m_s * 7.48051945)));
+
+	      CALL_MEMBER_FN(*this, errorFunc)(u, &bqq, &svv);
+
+	      qs += bqq * fac;
+	      vs += svv * fac;
+
+	      if (bqq != 0) {
+		yy = yy - 2 * m_dxx + 2 * m_w;
+		u = yy / sqrt((4 * m_tr * GetFact(x, !useAvgDaily) * t / (m_s * 7.48051945)));
+
+		CALL_MEMBER_FN(*this, errorFunc)(u, &bqq, &svv);
+
+		qs += bqq * fac;
+		vs += svv * fac;
+		if (bqq != 0) {
+		  fac *= -1;
+		}
+	      }
+	    } while (bqq != 0);
+	    m_qq[x] = qs;
+	    m_vv[x] = vs;
+	  }
+	}
+      }
+    }
+  }
+  else {
+    // For uniform return flow, just fill in the vv paramter.
+    int np_urf = min(npa, m_URF_Data.size());
+    for (int j=0; j<np; j++) {
+      // Carry out the effect of this month's pumping.
+      if (m_q[j] > 0) {
+	for (x=0; x<np_urf; x++) {
+	  if (j + x >= np) break;
+	  m_vd[j+x] += m_URF_Data[x] * m_q[j] * m_pumpingSign * GetFact(j, !useAvgDaily) * dela;
+	}
+      }
+      // Accumulate the volume.
+      if (j > 0) m_vd[j] += m_vd[j-1];
+    }
+  }
+
+  if (m_bi != URF) {
+    // Generate depletion
+    int adel = 0;
+    for (int j=0; j<np; j++) {
+      int n = -1;
+      if (m_q[j] > 0) {
+	for (x=adel; x<npa; x++) {
+	  n++;
+	  m_qd[x] += m_qq[n] * m_q[j] * m_pumpingSign;
+	  m_vd[x] += m_vv[n] * m_q[j] * m_pumpingSign * GetFact(j, !useAvgDaily) * (n+1) * dela;
+	}
+
+	n = -1;
+	if (np == 1) continue;
+
+	for (x=int(m_zzat[j] / dela); x<npa; x++) {
+	  n++;
+	  m_qd[x] -= m_qq[n] * m_q[j] * m_pumpingSign;
+	  m_vd[x] -= m_vv[n] * m_q[j] * m_pumpingSign * GetFact(j, !useAvgDaily) * (n+1) * dela;
+	}
+
+      }
+      adel = int(m_zzat[j] / dela);
+    }
+  }
+
+  // Print depletion
+  double tdela = 0;
+  double vfac = 1440;		// gallons
+  //if (m_vunits == "acre-feet") vfac /= 325900.0;
+  if (m_vunits == "acre-feet") vfac /= 325851.0;
+  double vdtp = 0.0;
+
+  if (m_tbp > 0) {
+    for (x=0; x<npa; x++) {
+      if (x * dela / m_tbp == int(x * dela / m_tbp)) {
+	OutputRec or;
+	or.m_time = dela * (x+1);
+	or.m_depRate = m_qd[x];
+	or.m_depVol = m_vd[x] * vfac;
+	or.m_depVolThis = m_vd[x] * vfac - vdtp;
+
+	if (np == 1) {
+	  or.m_depRatePerc = m_qd[x] * 100.0 / m_q[0] * m_pumpingSign;
+	  or.m_depVolPerc = m_vd[x] * 100.0 / (m_q[0] * m_pumpingSign * dela * (x+1) * GetFact(x, !useAvgDaily));
+	}
+
+	m_outputRecArray.push_back(or);
+      }
+      vdtp = m_vd[x] * vfac;
+    }
+  }
+}
+
+double
+GetFact(int iper, bool useActualDays)
+{
+  if (daysPerMonth.size() > 0 && useActualDays) return daysPerMonth[iper];
+  else {
+    const double ndays[4] = {1.0, 7.019231, 30.41667, 365};
+    return ndays[m_timeUnits];
+  }
+}
+
+
+double
+SiteData::CalcStreamQ(double l1, double l2, double yy, double u)
+{
+  double pi = 3.1415926535897932384626433832795;
+  double e = 2.71828182845904523536028747135266;
+
+  int simn = fabs(int(l2-l1) / yy) * 20 + .5;
+  if (simn < 40) simn = 40;
+  else if (simn > 100) simn = 100;
+
+  double delx = (l2 - l1) / simn;
+  double xc = l1 - delx;
+
+  double *h = new double [simn+1];
+
+  int n;
+  for (n=0; n<simn+1; n++) {
+    xc += delx;
+    double ab = yy * yy + xc * xc;
+
+    if (ab / u > 60)  h[n] = 0;
+    else h[n] = (pow(e, -(ab / u))) / ab;
+  }
+
+  double bqq = h[0] + h[simn];
+
+  for (n=1; n<simn; n++) {
+    if ((n+1) % 2 == 0) {
+      // even case
+      bqq += 4 * h[n];
+    }
+    else {
+      // odd case
+      bqq += 2 * h[n];
+    }
+  }
+  if (bqq<1e-33) bqq=0;
+  else bqq = bqq * delx * yy / (3*pi);
+
+  delete [] h;
+
+  return bqq;
+}
+
+double
+SiteData::CalcStreamV(double qn, double ql, double qp, double dela)
+{
+  return (qn + ql) * dela/2.0 + (qp - (ql+qn)/2.0) * dela *2.0/3.0;
+}
+
+void
+SiteData::CalcErrorFunc(double u, double *bqq, double *svv)
+{
+  double pi = 3.141592653589793; //3.1415926535897932384626433832795;
+  double e = 2.718281828459045; //2.71828182845904523536028747135266;
+
+  //********* SUB TO EVALUATE COMPLIMENTARY ERROR FUNCTION AND 2nd REPEATED
+  //********* INTEGRAL OF COMPLIMENTARY ERROR FUNCTION ***********************
+  if (u > 3.9) {
+    *bqq = 0;
+    *svv = 0;
+  }
+  else {
+    double sum = u;
+    double m = 0;
+    double n = u * u;
+    double term = u;
+    double p = 1;
+
+    do {
+      m++;
+      p += 2;
+      term = (-1 * term * n * (p-2)) / (p * m);
+      sum += term;
+      //} while (fabs(term) > 1e-8);  // was 1e-8
+    } while (fabs(term) > 1e-14);  // was 1e-8
+
+    *bqq = 1 - 2 * sum / sqrt(pi);
+    *svv = (*bqq) * (1 + 2 * (u * u)) - (2 * u * pow(e, -(u * u))) / sqrt(pi);
+  }
+}

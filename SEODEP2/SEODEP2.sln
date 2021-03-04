@@ -1,0 +1,21 @@
+Microsoft Visual Studio Solution File, Format Version 8.00
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SEODEP2", "SEODEP2.vcproj", "{29918130-C8FB-4305-88E3-E6D480B67985}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfiguration) = preSolution
+		Debug = Debug
+		Release = Release
+	EndGlobalSection
+	GlobalSection(ProjectConfiguration) = postSolution
+		{29918130-C8FB-4305-88E3-E6D480B67985}.Debug.ActiveCfg = Debug|Win32
+		{29918130-C8FB-4305-88E3-E6D480B67985}.Debug.Build.0 = Debug|Win32
+		{29918130-C8FB-4305-88E3-E6D480B67985}.Release.ActiveCfg = Release|Win32
+		{29918130-C8FB-4305-88E3-E6D480B67985}.Release.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+	EndGlobalSection
+	GlobalSection(ExtensibilityAddIns) = postSolution
+	EndGlobalSection
+EndGlobal
